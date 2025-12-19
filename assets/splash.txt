@@ -1,0 +1,12 @@
+# Placeholder para splash.png
+# Tamaño requerido: 1242x2436px
+# 
+# Para crear el asset real:
+# 1. Usa una herramienta de diseño (Figma, Photoshop, Canva)
+# 2. Crea una imagen 1242x2436px
+# 3. Guárdala como PNG en este directorio con el nombre: splash.png
+#
+# Herramientas recomendadas:
+# - https://www.appicon.co/ (generador automático)
+# - https://icon.kitchen/ (iconos adaptativos)
+# - Figma (diseño desde cero)

@@ -10,7 +10,6 @@ Aplicación móvil completa de seguimiento de comidas y nutrición desarrollada 
 - ✅ Registro de comidas por tipo (Desayuno, Almuerzo, Cena, Snack)
 - ✅ Búsqueda y agregado de alimentos
 - ✅ Base de datos de alimentos con 20 alimentos comunes pre-cargados
-- ✅ Integración con Monetag para monetización
 - ✅ Preparado para despliegue en Google Play Store
 
 ## 📋 Requisitos Previos
@@ -18,7 +17,7 @@ Aplicación móvil completa de seguimiento de comidas y nutrición desarrollada 
 - Node.js 18+ y npm/yarn
 - Expo CLI (`npm install -g expo-cli`)
 - Cuenta de Supabase (gratuita)
-- Cuenta de Monetag (opcional, para monetización)
+
 - EAS CLI para builds (`npm install -g eas-cli`)
 
 ## 🛠️ Instalación
@@ -39,7 +38,6 @@ Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=tu_url_de_supabase
 EXPO_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima_de_supabase
-EXPO_PUBLIC_MONETAG_SITE_ID=tu_site_id_de_monetag
 ```
 
 **Obtener credenciales de Supabase:**
@@ -178,7 +176,6 @@ nutrition-tracker-app/
 │   ├── _layout.tsx        # Layout principal
 │   └── index.tsx          # Punto de entrada
 ├── components/            # Componentes reutilizables
-│   ├── AdsComponent.tsx   # Componente de anuncios Monetag
 │   ├── CircularProgress.tsx
 │   └── MacroProgressBar.tsx
 ├── services/              # Servicios de API
@@ -203,13 +200,7 @@ nutrition-tracker-app/
 └── README.md
 ```
 
-## 🔧 Configuración de Monetag
-
-1. Crea una cuenta en [Monetag](https://monetag.com)
-2. Crea un nuevo sitio/app
-3. Copia el "Site ID" que te proporcionan
-4. Agrega el Site ID a tu archivo `.env` como `EXPO_PUBLIC_MONETAG_SITE_ID`
-5. El componente `AdsComponent` se renderizará automáticamente en las pantallas configuradas
+Este repositorio ya no incluye integración con Monetag; los anuncios fueron eliminados de la aplicación.
 
 ## 📱 Funcionalidades Principales
 
@@ -260,10 +251,7 @@ nutrition-tracker-app/
 - Asegúrate de que el `package` en `app.json` es único
 - Verifica que tienes los permisos necesarios en Google Play Console
 
-### Los anuncios no se muestran
-- Verifica que `EXPO_PUBLIC_MONETAG_SITE_ID` está configurado
-- Asegúrate de que el Site ID es correcto
-- Los anuncios pueden tardar en aparecer en desarrollo
+
 
 ## 📚 Recursos Adicionales
 

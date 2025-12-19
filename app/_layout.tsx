@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/store/authStore';
-import '../global.css';
 
 export default function RootLayout() {
   const { initialize, initialized } = useAuthStore();

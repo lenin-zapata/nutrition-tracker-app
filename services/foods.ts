@@ -1,11 +1,19 @@
 import { supabase, Food } from './supabase';
 
 export const foodsService = {
+  /**
+   * Busca alimentos por nombre en la tabla `foods` de Supabase.
+   * Si `query` está vacío, devuelve hasta 50 alimentos (búsqueda general).
+   */
   async searchFoods(query: string): Promise<Food[]> {
+    const trimmed = query.trim();
+    // Si no hay query, usamos '%' para traer resultados genéricos
+    const pattern = trimmed === '' ? '%' : `%${trimmed}%`;
+
     const { data, error } = await supabase
       .from('foods')
       .select('*')
-      .ilike('name', `%${query}%`)
+      .ilike('name', pattern)
       .limit(50);
 
     if (error) {

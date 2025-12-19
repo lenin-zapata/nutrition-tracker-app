@@ -6,7 +6,6 @@ import { useUserProfileStore } from '@/store/userProfileStore';
 import { useMealsStore } from '@/store/mealsStore';
 import CircularProgress from '@/components/CircularProgress';
 import MacroProgressBar from '@/components/MacroProgressBar';
-import AdsComponent from '@/components/AdsComponent';
 import { Ionicons } from '@expo/vector-icons';
 
 const MEAL_TYPES = {
@@ -157,10 +156,7 @@ export default function HomeScreen() {
           })}
         </View>
 
-        {/* Anuncio */}
-        <View className="mb-6">
-          <AdsComponent type="banner" />
-        </View>
+
       </View>
     </ScrollView>
   );

@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { useUserProfileStore } from '@/store/userProfileStore';
 import { useMealsStore } from '@/store/mealsStore';
 import { foodsService } from '@/services/foods';
 import { Food } from '@/services/supabase';
-import { mockFoods } from '@/data/mockData';
 import { Ionicons } from '@expo/vector-icons';
 
 const MEAL_TYPES = {
@@ -33,53 +32,43 @@ export default function AddFoodScreen() {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    // Cargar alimentos mock inicialmente
-    loadMockFoods();
+    // Cargar alimentos desde Supabase al iniciar
+    loadInitialFoods();
   }, []);
 
   useEffect(() => {
     if (searchQuery.length > 2) {
       searchFoods();
     } else if (searchQuery.length === 0) {
-      loadMockFoods();
+      loadInitialFoods();
     }
   }, [searchQuery]);
 
-  const loadMockFoods = async () => {
-    // Convertir mockFoods a formato Food con IDs temporales
-    const mockFoodsWithIds: Food[] = mockFoods.map((food, index) => ({
-      ...food,
-      id: `mock-${index}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }));
-    setFoods(mockFoodsWithIds);
+  /**
+   * Carga una lista genérica de alimentos desde Supabase.
+   * Se usa al iniciar y cuando el usuario borra el texto de búsqueda.
+   */
+  const loadInitialFoods = async () => {
+    setSearching(true);
+    try {
+      const dbFoods = await foodsService.searchFoods('');
+      setFoods(dbFoods);
+    } catch (error) {
+      console.error('Error loading foods:', error);
+      setFoods([]);
+    } finally {
+      setSearching(false);
+    }
   };
 
   const searchFoods = async () => {
     setSearching(true);
     try {
-      // Primero buscar en la base de datos
       const dbFoods = await foodsService.searchFoods(searchQuery);
-      
-      // Si no hay resultados, buscar en mockData
-      if (dbFoods.length === 0) {
-        const filtered = mockFoods.filter((food) =>
-          food.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        const mockFoodsWithIds: Food[] = filtered.map((food, index) => ({
-          ...food,
-          id: `mock-${index}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }));
-        setFoods(mockFoodsWithIds);
-      } else {
-        setFoods(dbFoods);
-      }
+      setFoods(dbFoods);
     } catch (error) {
       console.error('Error searching foods:', error);
-      loadMockFoods();
+      setFoods([]);
     } finally {
       setSearching(false);
     }

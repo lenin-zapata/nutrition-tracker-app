@@ -15,7 +15,6 @@ Crea un archivo `.env` en la raíz del proyecto:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima_aqui
-EXPO_PUBLIC_MONETAG_SITE_ID=tu_site_id_aqui
 ```
 
 **Obtener credenciales de Supabase:**
@@ -48,7 +47,7 @@ La aplicación debería estar funcionando. Si encuentras problemas, revisa el `R
 ## Próximos Pasos
 
 - [ ] Configurar los assets reales (iconos, splash screen)
-- [ ] Configurar Monetag (opcional)
+
 - [ ] Probar todas las funcionalidades
 - [ ] Preparar para producción (ver README.md)
 

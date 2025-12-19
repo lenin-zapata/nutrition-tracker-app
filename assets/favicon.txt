@@ -1,0 +1,12 @@
+# Placeholder para favicon.png
+# Tamaño requerido: 48x48px
+# 
+# Para crear el asset real:
+# 1. Usa una herramienta de diseño (Figma, Photoshop, Canva)
+# 2. Crea una imagen 48x48px
+# 3. Guárdala como PNG en este directorio con el nombre: favicon.png
+#
+# Herramientas recomendadas:
+# - https://www.appicon.co/ (generador automático)
+# - https://icon.kitchen/ (iconos adaptativos)
+# - Figma (diseño desde cero)

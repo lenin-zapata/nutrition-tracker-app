@@ -7,7 +7,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { signUp, loading } = useAuthStore();
+  const { signUp, signIn, loading } = useAuthStore();
 
   const handleRegister = async () => {
     if (!email || !password || !confirmPassword) {
@@ -29,6 +29,16 @@ export default function RegisterScreen() {
     if (error) {
       Alert.alert('Error', error.message || 'Error al registrar');
     } else {
+      // Intentar iniciar sesión automáticamente para asegurar que exista una sesión
+      const { error: signInError } = await signIn(email, password);
+      if (signInError) {
+        // Si no se puede iniciar sesión automáticamente, avisar y llevar al usuario al onboarding de todos modos
+        Alert.alert('Éxito', 'Cuenta creada. Por favor verifica tu correo y luego inicia sesión.', [
+          { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+        ]);
+        return;
+      }
+
       Alert.alert('Éxito', 'Cuenta creada. Redirigiendo al onboarding...', [
         { text: 'OK', onPress: () => router.replace('/onboarding') },
       ]);

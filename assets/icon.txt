@@ -1,0 +1,12 @@
+# Placeholder para icon.png
+# Tamaño requerido: 1024x1024px
+# 
+# Para crear el asset real:
+# 1. Usa una herramienta de diseño (Figma, Photoshop, Canva)
+# 2. Crea una imagen 1024x1024px
+# 3. Guárdala como PNG en este directorio con el nombre: icon.png
+#
+# Herramientas recomendadas:
+# - https://www.appicon.co/ (generador automático)
+# - https://icon.kitchen/ (iconos adaptativos)
+# - Figma (diseño desde cero)
