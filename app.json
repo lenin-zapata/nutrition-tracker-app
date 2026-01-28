@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#4F46E5"
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4F46E5"
+        "backgroundColor": "#ffffff"
       },
       "package": "com.nutritiontracker.app",
       "permissions": [
@@ -35,7 +35,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-1664097504847565~3992465606",
+          "iosAppId": "ca-app-pub-1664097504847565~3992465606"
+        }
+      ]
     ],
     "scheme": "nutritiontracker",
     "extra": {

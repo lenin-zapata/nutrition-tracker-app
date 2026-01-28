@@ -43,12 +43,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   
   initialize: async () => {
     set({ loading: true });
-    const session = await authService.getSession();
-    set({ 
-      user: session?.user || null, 
-      loading: false, 
-      initialized: true 
-    });
+    try {
+      const session = await authService.getSession();
+      set({ user: session?.user || null });
+    } catch (error) {
+      console.error('Error inicializando auth:', error);
+      set({ user: null });
+    } finally {
+      set({ loading: false, initialized: true });
+    }
     
     // Escuchar cambios en la autenticación
     supabase.auth.onAuthStateChange((_event, session) => {

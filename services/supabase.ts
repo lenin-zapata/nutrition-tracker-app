@@ -7,17 +7,33 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Missing Supabase environment variables. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file');
+  console.warn('⚠️ Missing Supabase environment variables. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY for your build (EAS / .env). App will run with a stubbed Supabase client to avoid crashes.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Stubbed supabase client con los métodos mínimos usados en la app
+const noop = {
   auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
+    signUp: async (_: any) => ({ data: null, error: new Error('Supabase not configured') }),
+    signInWithPassword: async (_: any) => ({ data: null, error: new Error('Supabase not configured') }),
+    signOut: async () => ({ error: new Error('Supabase not configured') }),
+    getUser: async () => ({ data: { user: null } }),
+    getSession: async () => ({ data: { session: null } }),
+    onAuthStateChange: (_callback: any) => ({ data: null }),
   },
-});
+} as unknown as ReturnType<typeof createClient>;
+
+const supabaseClient = (!supabaseUrl || !supabaseAnonKey)
+  ? noop
+  : createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storage: AsyncStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    });
+
+export const supabase = supabaseClient;
 
 // Tipos de la base de datos
 export interface UserProfile {
