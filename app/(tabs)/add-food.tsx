@@ -1,303 +1,344 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useAuthStore } from '@/store/authStore';
-import { useUserProfileStore } from '@/store/userProfileStore';
-import { useMealsStore } from '@/store/mealsStore';
-import { foodsService } from '@/services/foods';
-import { Food } from '@/services/supabase';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
-const MEAL_TYPES = {
-  breakfast: 'Desayuno',
-  lunch: 'Almuerzo',
-  dinner: 'Cena',
-  snack: 'Snack',
-};
+import { useMealsStore } from '@/store/mealsStore';
+import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/services/supabase';
 
 export default function AddFoodScreen() {
-  const { mealType } = useLocalSearchParams<{ mealType?: string }>();
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const mealType = params.mealType as string || 'breakfast';
+  
+  const { addMeal, loading } = useMealsStore();
   const { user } = useAuthStore();
-  const { profile } = useUserProfileStore();
-  const { addMeal } = useMealsStore();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [foods, setFoods] = useState<Food[]>([]);
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-  const [quantity, setQuantity] = useState('100');
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const currentMealType = (mealType as keyof typeof MEAL_TYPES) || 'breakfast';
-  const today = new Date().toISOString().split('T')[0];
+  // Formulario
+  const [foodId, setFoodId] = useState<string | null>(null);
+  const [foodName, setFoodName] = useState('');
+  const [calories, setCalories] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fats, setFats] = useState('');
+  const [quantity, setQuantity] = useState('100'); 
 
+  // --- LÓGICA DE BÚSQUEDA ---
   useEffect(() => {
-    // Cargar alimentos desde Supabase al iniciar
-    loadInitialFoods();
-  }, []);
+    const searchFoods = async () => {
+      if (searchQuery.length < 2) {
+        setSearchResults([]);
+        return;
+      }
 
-  useEffect(() => {
-    if (searchQuery.length > 2) {
+      setIsSearching(true);
+      const { data, error } = await supabase
+        .from('foods')
+        .select('*') // Traemos TODO para encontrar las columnas correctas
+        .ilike('name', `%${searchQuery}%`)
+        .limit(5);
+
+      if (!error && data) {
+        setSearchResults(data);
+      }
+      setIsSearching(false);
+    };
+
+    const delayDebounce = setTimeout(() => {
       searchFoods();
-    } else if (searchQuery.length === 0) {
-      loadInitialFoods();
-    }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
 
-  /**
-   * Carga una lista genérica de alimentos desde Supabase.
-   * Se usa al iniciar y cuando el usuario borra el texto de búsqueda.
-   */
-  const loadInitialFoods = async () => {
-    setSearching(true);
-    try {
-      const dbFoods = await foodsService.searchFoods('');
-      setFoods(dbFoods);
-    } catch (error) {
-      console.error('Error loading foods:', error);
-      setFoods([]);
-    } finally {
-      setSearching(false);
-    }
+  // --- SELECCIONAR ALIMENTO (CORREGIDO) ---
+  const handleSelectFood = (food: any) => {
+    console.log("Alimento seleccionado:", food); // Para depurar si falta algo
+
+    setFoodId(food.id);
+    setFoodName(food.name);
+    
+    // BUSCAMOS LOS VALORES CON DIFERENTES NOMBRES POSIBLES
+    // Prioridad: nombre exacto > nombre con _per_100g > nombre en singular
+    
+    // Calorías
+    const cal = food.calories || food.calories_per_100g || '';
+    
+    // Proteínas
+    const prot = food.protein || food.protein_per_100g || food.proteins || food.proteins_per_100g || '';
+    
+    // Carbohidratos
+    const carb = food.carbs || food.carbs_per_100g || food.carbohydrates || food.carbohydrates_per_100g || '';
+    
+    // Grasas
+    const fat = food.fats || food.fats_per_100g || food.fat || food.fat_per_100g || '';
+
+    // Asignamos los valores encontrados
+    setCalories(cal ? cal.toString() : '');
+    setProtein(prot ? prot.toString() : '');
+    setCarbs(carb ? carb.toString() : '');
+    setFats(fat ? fat.toString() : '');
+    
+    setQuantity('100'); // Asumimos que la info base es por 100g
+    
+    // Limpiamos
+    setSearchResults([]);
+    setSearchQuery(''); 
   };
 
-  const searchFoods = async () => {
-    setSearching(true);
-    try {
-      const dbFoods = await foodsService.searchFoods(searchQuery);
-      setFoods(dbFoods);
-    } catch (error) {
-      console.error('Error searching foods:', error);
-      setFoods([]);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleAddMeal = async () => {
-    if (!user || !selectedFood) {
-      Alert.alert('Error', 'Por favor selecciona un alimento');
+  const handleAddFood = async () => {
+    if (!foodName || !calories) {
+      Alert.alert('Faltan datos', 'Por favor ingresa al menos el nombre y las calorías');
       return;
     }
 
-    const quantityNum = parseFloat(quantity);
-    if (isNaN(quantityNum) || quantityNum <= 0) {
-      Alert.alert('Error', 'Por favor ingresa una cantidad válida');
-      return;
-    }
-
-    setLoading(true);
+    if (!user) return;
 
     try {
-      // Calcular valores nutricionales basados en la cantidad
-      const multiplier = quantityNum / 100;
-      const calories = selectedFood.calories_per_100g * multiplier;
-      const protein = selectedFood.protein_per_100g * multiplier;
-      const carbs = selectedFood.carbs_per_100g * multiplier;
-      const fats = selectedFood.fats_per_100g * multiplier;
-
-      // Si el alimento es mock, primero crearlo en la BD
-      let foodId = selectedFood.id;
-      if (foodId.startsWith('mock-')) {
-        const created = await foodsService.createFood({
-          name: selectedFood.name,
-          brand: selectedFood.brand,
-          barcode: selectedFood.barcode,
-          calories_per_100g: selectedFood.calories_per_100g,
-          protein_per_100g: selectedFood.protein_per_100g,
-          carbs_per_100g: selectedFood.carbs_per_100g,
-          fats_per_100g: selectedFood.fats_per_100g,
-          fiber_per_100g: selectedFood.fiber_per_100g,
-          sugar_per_100g: selectedFood.sugar_per_100g,
-        });
-        if (created) {
-          foodId = created.id;
-        } else {
-          throw new Error('Error al crear el alimento');
-        }
-      }
-
-      const success = await addMeal({
+      await addMeal({
         user_id: user.id,
         food_id: foodId,
-        meal_type: currentMealType,
-        quantity_grams: quantityNum,
-        calories: calories,
-        protein: protein,
-        carbs: carbs,
-        fats: fats,
-        meal_date: today,
+        meal_type: mealType,
+        name: foodName,
+        calories: Number(calories),
+        protein: Number(protein) || 0,
+        carbs: Number(carbs) || 0,
+        fats: Number(fats) || 0,
+        quantity_grams: Number(quantity) || 100,
       });
 
-      if (success) {
-        Alert.alert('Éxito', 'Comida agregada correctamente', [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
-      } else {
-        Alert.alert('Error', 'Error al agregar la comida');
-      }
+      Alert.alert('¡Éxito!', 'Comida agregada correctamente', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+      
     } catch (error) {
-      Alert.alert('Error', 'Error al agregar la comida');
-    } finally {
-      setLoading(false);
+      console.error(error);
+      Alert.alert('Error', 'Hubo un problema al guardar la comida.');
     }
   };
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="px-6 pt-12 pb-4 bg-white border-b border-gray-200">
-        <View className="flex-row items-center mb-4">
-          <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text className="text-2xl font-bold text-gray-900">
-            Agregar {MEAL_TYPES[currentMealType]}
-          </Text>
-        </View>
-
-        {/* Buscador */}
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-4 py-3 mb-4">
-          <Ionicons name="search" size={20} color="#6B7280" />
-          <TextInput
-            className="flex-1 ml-2 text-base"
-            placeholder="Buscar alimento..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-          />
-        </View>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Agregar a {mealType}</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView className="flex-1">
-        {selectedFood ? (
-          // Vista de detalles del alimento seleccionado
-          <View className="px-6 py-6">
-            <View className="bg-indigo-50 rounded-xl p-6 mb-6">
-              <Text className="text-2xl font-bold text-gray-900 mb-2">{selectedFood.name}</Text>
-              {selectedFood.brand && (
-                <Text className="text-sm text-gray-600 mb-4">{selectedFood.brand}</Text>
-              )}
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        
+        {/* BUSCADOR */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar alimento (ej. Manzana)..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {isSearching && <ActivityIndicator size="small" color="#4F46E5" />}
+        </View>
 
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-sm text-gray-600">Calorías (100g)</Text>
-                <Text className="text-sm font-semibold text-gray-900">
-                  {selectedFood.calories_per_100g} kcal
-                </Text>
-              </View>
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-sm text-gray-600">Proteínas</Text>
-                <Text className="text-sm font-semibold text-gray-900">
-                  {selectedFood.protein_per_100g}g
-                </Text>
-              </View>
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-sm text-gray-600">Carbohidratos</Text>
-                <Text className="text-sm font-semibold text-gray-900">
-                  {selectedFood.carbs_per_100g}g
-                </Text>
-              </View>
-              <View className="flex-row justify-between">
-                <Text className="text-sm text-gray-600">Grasas</Text>
-                <Text className="text-sm font-semibold text-gray-900">
-                  {selectedFood.fats_per_100g}g
-                </Text>
-              </View>
-            </View>
-
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Cantidad (gramos)</Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
-                placeholder="100"
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="decimal-pad"
-              />
-            </View>
-
-            {quantity && !isNaN(parseFloat(quantity)) && parseFloat(quantity) > 0 && (
-              <View className="bg-gray-50 rounded-xl p-4 mb-6">
-                <Text className="text-sm font-medium text-gray-700 mb-2">Valores nutricionales</Text>
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-sm text-gray-600">Calorías</Text>
-                  <Text className="text-sm font-semibold text-gray-900">
-                    {Math.round((selectedFood.calories_per_100g * parseFloat(quantity)) / 100)} kcal
-                  </Text>
-                </View>
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-sm text-gray-600">Proteínas</Text>
-                  <Text className="text-sm font-semibold text-gray-900">
-                    {Math.round((selectedFood.protein_per_100g * parseFloat(quantity)) / 100)}g
-                  </Text>
-                </View>
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-sm text-gray-600">Carbohidratos</Text>
-                  <Text className="text-sm font-semibold text-gray-900">
-                    {Math.round((selectedFood.carbs_per_100g * parseFloat(quantity)) / 100)}g
-                  </Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-sm text-gray-600">Grasas</Text>
-                  <Text className="text-sm font-semibold text-gray-900">
-                    {Math.round((selectedFood.fats_per_100g * parseFloat(quantity)) / 100)}g
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                className="flex-1 bg-gray-200 rounded-lg py-4"
-                onPress={() => setSelectedFood(null)}
+        {/* RESULTADOS */}
+        {searchResults.length > 0 && (
+          <View style={styles.resultsList}>
+            {searchResults.map((item) => (
+              <TouchableOpacity 
+                key={item.id} 
+                style={styles.resultItem}
+                onPress={() => handleSelectFood(item)}
               >
-                <Text className="text-center font-semibold text-gray-700">Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-1 bg-indigo-600 rounded-lg py-4"
-                onPress={handleAddMeal}
-                disabled={loading}
-              >
-                <Text className="text-center font-semibold text-white">
-                  {loading ? 'Agregando...' : 'Agregar'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          // Lista de alimentos
-          <View className="px-6 py-4">
-            {searching && (
-              <Text className="text-center text-gray-600 mb-4">Buscando...</Text>
-            )}
-            {foods.length === 0 && !searching && (
-              <Text className="text-center text-gray-600 mb-4">
-                No se encontraron alimentos
-              </Text>
-            )}
-            {foods.map((food) => (
-              <TouchableOpacity
-                key={food.id}
-                className="bg-gray-50 rounded-xl p-4 mb-3"
-                onPress={() => setSelectedFood(food)}
-              >
-                <Text className="text-base font-semibold text-gray-900 mb-1">{food.name}</Text>
-                {food.brand && (
-                  <Text className="text-sm text-gray-600 mb-2">{food.brand}</Text>
-                )}
-                <View className="flex-row justify-between">
-                  <Text className="text-sm text-gray-600">
-                    {food.calories_per_100g} kcal / 100g
-                  </Text>
-                  <Text className="text-sm text-gray-600">
-                    P: {food.protein_per_100g}g • C: {food.carbs_per_100g}g • G: {food.fats_per_100g}g
-                  </Text>
+                <View>
+                  <Text style={styles.resultName}>{item.name}</Text>
+                  <Text style={styles.resultBrand}>{item.brand || 'Genérico'}</Text>
                 </View>
+                <Ionicons name="add-circle-outline" size={24} color="#4F46E5" />
               </TouchableOpacity>
             ))}
           </View>
         )}
+
+        <Text style={styles.sectionTitle}>Datos del Alimento (por {quantity}g):</Text>
+
+        <View style={styles.formCard}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Nombre</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ej. Pechuga de Pollo"
+              value={foodName}
+              onChangeText={setFoodName}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+              <Text style={styles.label}>Calorías</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="kcal"
+                keyboardType="numeric"
+                value={calories}
+                onChangeText={setCalories}
+              />
+            </View>
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+              <Text style={styles.label}>Cantidad (g)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="100g"
+                keyboardType="numeric"
+                value={quantity}
+                onChangeText={setQuantity}
+              />
+            </View>
+          </View>
+
+          <Text style={styles.macrosTitle}>Macronutrientes</Text>
+          <View style={styles.row}>
+            <View style={styles.macroInput}>
+              <Text style={styles.label}>Proteína</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0g"
+                keyboardType="numeric"
+                value={protein}
+                onChangeText={setProtein}
+              />
+            </View>
+            <View style={styles.macroInput}>
+              <Text style={styles.label}>Carbos</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0g"
+                keyboardType="numeric"
+                value={carbs}
+                onChangeText={setCarbs}
+              />
+            </View>
+            <View style={styles.macroInput}>
+              <Text style={styles.label}>Grasas</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0g"
+                keyboardType="numeric"
+                value={fats}
+                onChangeText={setFats}
+              />
+            </View>
+          </View>
+        </View>
       </ScrollView>
+
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.saveButton} 
+          onPress={handleAddFood}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={24} color="#FFF" />
+              <Text style={styles.saveButtonText}>Guardar Comida</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    backgroundColor: '#FFF',
+  },
+  backButton: { padding: 8 },
+  title: { fontSize: 18, fontWeight: 'bold', color: '#111827', textTransform: 'capitalize' },
+  content: { padding: 16 },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: 12,
+    height: 48,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 16 },
+  resultsList: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    marginBottom: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxHeight: 200, 
+    zIndex: 10, // Asegura que se vea sobre otros elementos
+  },
+  resultItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  resultName: { fontSize: 16, color: '#111827', fontWeight: '500' },
+  resultBrand: { fontSize: 12, color: '#6B7280' },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 12 },
+  formCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 14, color: '#6B7280', marginBottom: 6, fontWeight: '500' },
+  input: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 44,
+    fontSize: 16,
+    color: '#111827',
+  },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  macrosTitle: { fontSize: 14, fontWeight: 'bold', color: '#111827', marginTop: 8, marginBottom: 12 },
+  macroInput: { flex: 1, marginHorizontal: 4 },
+  footer: {
+    padding: 16,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingBottom: 30,
+  },
+  saveButton: {
+    backgroundColor: '#4F46E5',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+  },
+  saveButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, marginLeft: 8 },
+});

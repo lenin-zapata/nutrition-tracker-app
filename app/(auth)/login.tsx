@@ -1,7 +1,78 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  contentWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  headerSection: {
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#4b5563',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputGroupLast: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  loginButton: {
+    backgroundColor: '#4f46e5',
+    borderRadius: 8,
+    paddingVertical: 16,
+    marginBottom: 16,
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
+  },
+  loginButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: 18,
+  },
+  signupSection: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  signupText: {
+    color: '#4b5563',
+  },
+  signupLink: {
+    color: '#4f46e5',
+    fontWeight: '600',
+  },
+});
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -18,7 +89,6 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert('Error', error.message || 'Error al iniciar sesión');
     } else {
-      // Redirigir a la raíz para que app/index.tsx maneje la navegación
       router.replace('/');
     }
   };
@@ -26,54 +96,56 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
+      style={styles.container}
     >
-      <View className="flex-1 justify-center px-6">
-        <View className="mb-8">
-          <Text className="text-4xl font-bold text-gray-900 mb-2">Bienvenido</Text>
-          <Text className="text-lg text-gray-600">Inicia sesión en tu cuenta</Text>
+      <View style={styles.contentWrapper}>
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>Bienvenido</Text>
+          <Text style={styles.subtitle}>Inicia sesión en tu cuenta</Text>
         </View>
 
-        <View className="mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">Email</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email</Text>
           <TextInput
-            className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+            style={styles.input}
             placeholder="tu@email.com"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            editable={!loading}
           />
         </View>
 
-        <View className="mb-6">
-          <Text className="text-sm font-medium text-gray-700 mb-2">Contraseña</Text>
+        <View style={styles.inputGroupLast}>
+          <Text style={styles.label}>Contraseña</Text>
           <TextInput
-            className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+            style={styles.input}
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
+            editable={!loading}
           />
         </View>
 
         <TouchableOpacity
-          className="bg-indigo-600 rounded-lg py-4 mb-4"
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
           onPress={handleLogin}
           disabled={loading}
         >
-          <Text className="text-white text-center font-semibold text-lg">
+          <Text style={styles.loginButtonText}>
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </Text>
         </TouchableOpacity>
 
-        <View className="flex-row justify-center">
-          <Text className="text-gray-600">¿No tienes cuenta? </Text>
+        <View style={styles.signupSection}>
+          <Text style={styles.signupText}>¿No tienes cuenta? </Text>
           <Link href="/(auth)/register" asChild>
             <TouchableOpacity>
-              <Text className="text-indigo-600 font-semibold">Regístrate</Text>
+              <Text style={styles.signupLink}>Regístrate</Text>
             </TouchableOpacity>
           </Link>
         </View>
@@ -81,4 +153,3 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-

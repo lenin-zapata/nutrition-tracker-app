@@ -20,54 +20,48 @@ export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   loading: false,
   initialized: false,
-  
+
   setUser: (user) => set({ user }),
-  
+
   signIn: async (email, password) => {
     set({ loading: true });
     const { data, error } = await authService.signIn(email, password);
     set({ user: data?.user || null, loading: false });
     return { error };
   },
-  
+
   signUp: async (email, password) => {
     set({ loading: true });
     const { data, error } = await authService.signUp(email, password);
     set({ user: data?.user || null, loading: false });
     return { error };
   },
-  
+
   signOut: async () => {
     set({ loading: true });
     await authService.signOut();
     set({ user: null, loading: false });
   },
-  
+
   initialize: async () => {
     try {
-      // Intentamos recuperar la sesión
       const { data, error } = await supabase.auth.getSession();
 
       if (error) {
-        // Si hay error (como el "Invalid Refresh Token"), forzamos logout
-        console.log("Sesión inválida, cerrando sesión...");
+        console.error('Invalid session, signing out:', error);
         await supabase.auth.signOut();
         set({ session: null, user: null, initialized: true });
         return;
       }
 
-      // Si todo bien, guardamos la sesión
       set({ session: data.session, user: data.session?.user ?? null, initialized: true });
-
-    } catch (e) {
-      // Si explota por cualquier otra razón
+    } catch (error) {
+      console.error('Session initialization failed:', error);
       set({ session: null, user: null, initialized: true });
     }
-    
-    // Escuchar cambios futuros (login, logout, auto-refresh)
+
     supabase.auth.onAuthStateChange((_event, session) => {
       set({ session, user: session?.user ?? null });
     });
   },
 }));
-

@@ -1,89 +1,141 @@
 import { create } from 'zustand';
-import { Meal } from '@/services/supabase';
-import { mealsService } from '@/services/meals';
+import { supabase } from '@/services/supabase';
+
+export interface Meal {
+  // CORRECCIÓN DE TIPOS: En tu BD son UUIDs (strings), no números
+  id: string; 
+  user_id: string;
+  food_id: string;
+  
+  meal_type: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  
+  // CORRECCIÓN DE NOMBRE: Coincide con tu captura de pantalla
+  quantity_grams: number; 
+  
+  name?: string; 
+  created_at?: string;
+  meal_date?: string; 
+  foods?: {
+    name: string;
+    brand?: string;
+  };
+}
 
 interface MealsState {
   meals: Meal[];
-  loading: boolean;
   dailyTotals: {
     calories: number;
     protein: number;
     carbs: number;
     fats: number;
   };
+  loading: boolean;
   fetchMeals: (userId: string, date: string) => Promise<void>;
-  addMeal: (meal: Omit<Meal, 'id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
-  updateMeal: (mealId: string, updates: Partial<Meal>) => Promise<boolean>;
-  deleteMeal: (mealId: string) => Promise<boolean>;
-  refreshTotals: (userId: string, date: string) => Promise<void>;
+  addMeal: (meal: any) => Promise<void>;
+  deleteMeal: (id: string) => Promise<void>; // id ahora es string
 }
 
-export const useMealsStore = create<MealsState>((set) => ({
+export const useMealsStore = create<MealsState>((set, get) => ({
   meals: [],
+  dailyTotals: { calories: 0, protein: 0, carbs: 0, fats: 0 },
   loading: false,
-  dailyTotals: {
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fats: 0,
-  },
-  
-  fetchMeals: async (userId: string, date: string) => {
+
+  fetchMeals: async (userId: string, dateStr: string) => {
     set({ loading: true });
-    const meals = await mealsService.getMealsByDate(userId, date);
-    const totals = await mealsService.getDailyTotals(userId, date);
-    set({ meals, dailyTotals: totals, loading: false });
-  },
-  
-  addMeal: async (meal) => {
-    set({ loading: true });
-    const added = await mealsService.addMeal(meal);
-    if (added) {
-      const newMeals = [...(await mealsService.getMealsByDate(meal.user_id, meal.meal_date))];
-      const totals = await mealsService.getDailyTotals(meal.user_id, meal.meal_date);
-      set({ meals: newMeals, dailyTotals: totals, loading: false });
-      return true;
-    }
-    set({ loading: false });
-    return false;
-  },
-  
-  updateMeal: async (mealId, updates) => {
-    set({ loading: true });
-    const updated = await mealsService.updateMeal(mealId, updates);
-    if (updated) {
-      const newMeals = [...(await mealsService.getMealsByDate(updated.user_id, updated.meal_date))];
-      const totals = await mealsService.getDailyTotals(updated.user_id, updated.meal_date);
-      set({ meals: newMeals, dailyTotals: totals, loading: false });
-      return true;
-    }
-    set({ loading: false });
-    return false;
-  },
-  
-  deleteMeal: async (mealId) => {
-    set({ loading: true });
-    const state = useMealsStore.getState();
-    const meal = state.meals.find(m => m.id === mealId);
-    if (!meal) {
-      set({ loading: false });
-      return false;
-    }
     
-    const success = await mealsService.deleteMeal(mealId);
-    if (success) {
-      const newMeals = await mealsService.getMealsByDate(meal.user_id, meal.meal_date);
-      const totals = await mealsService.getDailyTotals(meal.user_id, meal.meal_date);
-      set({ meals: newMeals, dailyTotals: totals, loading: false });
-      return true;
+    const startOfDay = new Date(dateStr).toISOString();
+    const endOfDay = new Date(new Date(dateStr).getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+    console.log("📥 Pidiendo columnas exactas (Schema verificado)...");
+
+    // SOLICITUD EXACTA SEGÚN TU CAPTURA DE PANTALLA
+    const { data, error } = await supabase
+      .from('meals')
+      .select(`
+        id,
+        user_id,
+        food_id,
+        meal_type,
+        quantity_grams,
+        calories,
+        protein,
+        carbs,
+        fats,
+        created_at,
+        meal_date,
+        foods ( name, brand )
+      `)
+      .eq('user_id', userId)
+      .gte('created_at', startOfDay)
+      .lt('created_at', endOfDay)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Error fetching meals:', error.message);
+      set({ loading: false });
+      return; 
     }
-    set({ loading: false });
-    return false;
+
+    const totals = (data || []).reduce(
+      (acc, meal) => ({
+        calories: acc.calories + (meal.calories || 0),
+        protein: acc.protein + (meal.protein || 0),
+        carbs: acc.carbs + (meal.carbs || 0),
+        fats: acc.fats + (meal.fats || 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+
+    set({ meals: data as Meal[], dailyTotals: totals, loading: false });
   },
-  
-  refreshTotals: async (userId: string, date: string) => {
-    const totals = await mealsService.getDailyTotals(userId, date);
-    set({ dailyTotals: totals });
+
+  addMeal: async (newMeal) => {
+    // PREPARACIÓN DE DATOS BLINDADA
+    // 1. Sacamos 'date' (no existe columna)
+    // 2. Sacamos 'weight_g' (nombre viejo) y lo asignamos a 'quantity_grams'
+    // 3. Sacamos 'id' si viene vacío para que la BD genere el UUID
+    const { date, name, weight_g, id, ...rest } = newMeal;
+    
+    const mealDataToSave = {
+      ...rest,
+      quantity_grams: weight_g || rest.quantity_grams || 100, 
+    };
+
+    const { error } = await supabase
+      .from('meals')
+      .insert([mealDataToSave]);
+
+    if (error) {
+      console.error('❌ Error adding meal:', error.message);
+      throw error; 
+    }
+
+    const refreshDate = date || new Date().toISOString().split('T')[0];
+    const { fetchMeals } = get();
+    await fetchMeals(newMeal.user_id, refreshDate);
+  },
+
+  deleteMeal: async (id: string) => {
+    const { error } = await supabase.from('meals').delete().eq('id', id);
+    if (error) { console.error(error); return; }
+    
+    const { meals } = get();
+    const updatedMeals = meals.filter((m) => m.id !== id);
+    
+    const totals = updatedMeals.reduce(
+      (acc, meal) => ({
+        calories: acc.calories + (meal.calories || 0),
+        protein: acc.protein + (meal.protein || 0),
+        carbs: acc.carbs + (meal.carbs || 0),
+        fats: acc.fats + (meal.fats || 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+
+    set({ meals: updatedMeals, dailyTotals: totals });
   },
 }));
-

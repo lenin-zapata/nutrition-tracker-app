@@ -1,47 +1,56 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+const TAB_BAR_CONFIG = {
+  activeTintColor: '#4F46E5',
+  inactiveTintColor: '#6B7280',
+  borderTopWidth: 1,
+  borderTopColor: '#E5E7EB',
+};
+
+const TABS = [
+  {
+    name: 'home',
+    title: 'Inicio',
+    icon: 'home',
+  },
+  {
+    name: 'add-food',
+    title: 'Agregar',
+    icon: 'add-circle',
+  },
+  {
+    name: 'profile',
+    title: 'Perfil',
+    icon: 'person',
+  },
+] as const;
+
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: TAB_BAR_CONFIG.activeTintColor,
+        tabBarInactiveTintColor: TAB_BAR_CONFIG.inactiveTintColor,
         tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopWidth: TAB_BAR_CONFIG.borderTopWidth,
+          borderTopColor: TAB_BAR_CONFIG.borderTopColor,
         },
       }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="add-food"
-        options={{
-          title: 'Agregar',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
-        }}
-      />
+      {TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.title,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name={tab.icon as any} size={size} color={color} />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
-

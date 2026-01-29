@@ -14,34 +14,24 @@ interface UserProfileState {
 export const useUserProfileStore = create<UserProfileState>((set) => ({
   profile: null,
   loading: false,
-  
+
   fetchProfile: async (userId: string) => {
     set({ loading: true });
     const profile = await userProfileService.getProfile(userId);
     set({ profile, loading: false });
-    return profile;
   },
-  
+
   createOrUpdateProfile: async (profile: Partial<UserProfile>) => {
     set({ loading: true });
     const updated = await userProfileService.createOrUpdateProfile(profile);
-    if (updated) {
-      set({ profile: updated, loading: false });
-    } else {
-      set({ loading: false });
-    }
+    set({ profile: updated || null, loading: false });
   },
-  
+
   updateProfile: async (userId: string, updates: Partial<UserProfile>) => {
     set({ loading: true });
     const updated = await userProfileService.updateProfile(userId, updates);
-    if (updated) {
-      set({ profile: updated, loading: false });
-    } else {
-      set({ loading: false });
-    }
+    set({ profile: updated || null, loading: false });
   },
-  
+
   setProfile: (profile) => set({ profile }),
 }));
-
