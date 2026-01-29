@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { useUserProfileStore } from '@/store/userProfileStore';
@@ -17,21 +17,45 @@ const MEAL_TYPES = {
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
-  const { profile } = useUserProfileStore();
-  const { meals, dailyTotals, fetchMeals, loading } = useMealsStore();
+  const { profile, fetchProfile } = useUserProfileStore(); 
+  const { meals, dailyTotals, fetchMeals } = useMealsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [today] = useState(new Date().toISOString().split('T')[0]);
 
+  // LÓGICA DE REDIRECCIÓN AUTOMÁTICA (CORREGIDA)
   useEffect(() => {
-    if (user) {
-      fetchMeals(user.id, today);
-    }
+    const initData = async () => {
+      if (user) {
+        // 1. Esperamos a que termine de descargar
+        await fetchProfile(user.id);
+        
+        // 2. TRUCO: Leemos el estado directo del almacén (Bypass de TypeScript)
+        const currentProfile = useUserProfileStore.getState().profile;
+        
+        // 3. ¿Sigue vacío? -> Al Onboarding
+        if (!currentProfile) {
+          console.log("Usuario nuevo detectado. Redirigiendo a Onboarding...");
+          router.replace('/onboarding');
+          return;
+        }
+
+        // 4. Si existe, descargamos comidas
+        fetchMeals(user.id, today);
+      }
+    };
+
+    initData();
   }, [user, today]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     if (user) {
-      await fetchMeals(user.id, today);
+      await fetchProfile(user.id);
+      // Verificamos directo del store para estar seguros
+      const current = useUserProfileStore.getState().profile;
+      if (current) {
+        await fetchMeals(user.id, today);
+      }
     }
     setRefreshing(false);
   };
@@ -47,24 +71,26 @@ export default function HomeScreen() {
     return getMealsByType(type).reduce((sum, meal) => sum + meal.calories, 0);
   };
 
+  // PANTALLA DE CARGA
   if (!profile) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <Text className="text-gray-600">Cargando...</Text>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Verificando perfil...</Text>
       </View>
     );
   }
 
   return (
     <ScrollView
-      className="flex-1 bg-white"
+      style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <View className="px-6 pt-12 pb-8">
+      <View style={styles.contentContainer}>
         {/* Header */}
-        <View className="mb-6">
-          <Text className="text-3xl font-bold text-gray-900 mb-1">Hoy</Text>
-          <Text className="text-base text-gray-600">
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Hoy</Text>
+          <Text style={styles.headerDate}>
             {new Date().toLocaleDateString('es-ES', {
               weekday: 'long',
               year: 'numeric',
@@ -75,27 +101,27 @@ export default function HomeScreen() {
         </View>
 
         {/* Calorías principales */}
-        <View className="bg-indigo-50 rounded-2xl p-6 mb-6 items-center">
-          <Text className="text-sm font-medium text-indigo-700 mb-2">Calorías</Text>
+        <View style={styles.caloriesCard}>
+          <Text style={styles.cardLabel}>Calorías</Text>
           <CircularProgress
             size={150}
             strokeWidth={12}
             progress={calorieProgress}
             color="#4F46E5"
           />
-          <View className="mt-4 items-center">
-            <Text className="text-3xl font-bold text-gray-900">
+          <View style={styles.caloriesInfo}>
+            <Text style={styles.caloriesValue}>
               {Math.round(dailyTotals.calories)}
             </Text>
-            <Text className="text-base text-gray-600">
+            <Text style={styles.caloriesGoal}>
               de {Math.round(calorieGoal)} kcal
             </Text>
           </View>
         </View>
 
         {/* Macronutrientes */}
-        <View className="mb-6">
-          <Text className="text-xl font-bold text-gray-900 mb-4">Macronutrientes</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Macronutrientes</Text>
           <MacroProgressBar
             label="Proteínas"
             current={dailyTotals.protein}
@@ -117,14 +143,14 @@ export default function HomeScreen() {
         </View>
 
         {/* Comidas del día */}
-        <View className="mb-6">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-bold text-gray-900">Comidas</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Comidas</Text>
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/add-food')}
-              className="bg-indigo-600 px-4 py-2 rounded-lg"
+              style={styles.addButton}
             >
-              <Text className="text-white font-semibold">Agregar</Text>
+              <Text style={styles.addButtonText}>Agregar</Text>
             </TouchableOpacity>
           </View>
 
@@ -135,15 +161,15 @@ export default function HomeScreen() {
             return (
               <TouchableOpacity
                 key={type}
-                className="bg-gray-50 rounded-xl p-4 mb-3"
+                style={styles.mealCard}
                 onPress={() => router.push(`/(tabs)/add-food?mealType=${type}`)}
               >
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center flex-1">
+                <View style={styles.mealCardContent}>
+                  <View style={styles.mealCardLeft}>
                     <Ionicons name={icon as any} size={24} color="#4F46E5" />
-                    <View className="ml-3 flex-1">
-                      <Text className="text-base font-semibold text-gray-900">{label}</Text>
-                      <Text className="text-sm text-gray-600">
+                    <View style={styles.mealCardTextContainer}>
+                      <Text style={styles.mealCardTitle}>{label}</Text>
+                      <Text style={styles.mealCardSubtitle}>
                         {typeMeals.length} {typeMeals.length === 1 ? 'comida' : 'comidas'} •{' '}
                         {Math.round(totalCalories)} kcal
                       </Text>
@@ -156,9 +182,34 @@ export default function HomeScreen() {
           })}
         </View>
 
-
       </View>
     </ScrollView>
   );
 }
 
+// ESTILOS ESTÁNDAR
+const styles = StyleSheet.create({
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+  loadingText: { marginTop: 10, color: '#4B5563', fontSize: 16 },
+  container: { flex: 1, backgroundColor: '#fff' },
+  contentContainer: { paddingHorizontal: 24, paddingTop: 48, paddingBottom: 32 },
+  header: { marginBottom: 24 },
+  headerTitle: { fontSize: 30, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
+  headerDate: { fontSize: 16, color: '#4B5563', textTransform: 'capitalize' },
+  caloriesCard: { backgroundColor: '#EEF2FF', borderRadius: 16, padding: 24, marginBottom: 24, alignItems: 'center' },
+  cardLabel: { fontSize: 14, fontWeight: '500', color: '#4338CA', marginBottom: 8 },
+  caloriesInfo: { marginTop: 16, alignItems: 'center' },
+  caloriesValue: { fontSize: 30, fontWeight: 'bold', color: '#111827' },
+  caloriesGoal: { fontSize: 16, color: '#4B5563' },
+  section: { marginBottom: 24 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827', marginBottom: 16 },
+  addButton: { backgroundColor: '#4F46E5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  addButtonText: { color: '#fff', fontWeight: '600' },
+  mealCard: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 12 },
+  mealCardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mealCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  mealCardTextContainer: { marginLeft: 12, flex: 1 },
+  mealCardTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  mealCardSubtitle: { fontSize: 14, color: '#4B5563' },
+});

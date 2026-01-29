@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { User } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 import { authService } from '@/services/auth';
 import { supabase } from '@/services/supabase';
 
 interface AuthState {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   initialized: boolean;
   setUser: (user: User | null) => void;
@@ -16,6 +17,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  session: null,
   loading: false,
   initialized: false,
   
@@ -42,20 +44,29 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   
   initialize: async () => {
-    set({ loading: true });
     try {
-      const session = await authService.getSession();
-      set({ user: session?.user || null });
-    } catch (error) {
-      console.error('Error inicializando auth:', error);
-      set({ user: null });
-    } finally {
-      set({ loading: false, initialized: true });
+      // Intentamos recuperar la sesión
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        // Si hay error (como el "Invalid Refresh Token"), forzamos logout
+        console.log("Sesión inválida, cerrando sesión...");
+        await supabase.auth.signOut();
+        set({ session: null, user: null, initialized: true });
+        return;
+      }
+
+      // Si todo bien, guardamos la sesión
+      set({ session: data.session, user: data.session?.user ?? null, initialized: true });
+
+    } catch (e) {
+      // Si explota por cualquier otra razón
+      set({ session: null, user: null, initialized: true });
     }
     
-    // Escuchar cambios en la autenticación
+    // Escuchar cambios futuros (login, logout, auto-refresh)
     supabase.auth.onAuthStateChange((_event, session) => {
-      set({ user: session?.user || null });
+      set({ session, user: session?.user ?? null });
     });
   },
 }));
