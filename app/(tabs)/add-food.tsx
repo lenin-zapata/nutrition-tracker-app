@@ -5,17 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMealsStore } from '@/store/mealsStore';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/services/supabase';
-import { useTranslation } from 'react-i18next'; // ✅ Import i18n
+import { useTranslation } from 'react-i18next';
 
 export default function AddFoodScreen() {
-  const { t } = useTranslation(); // ✅ Hook de traducción
+  const { t, i18n } = useTranslation(); // ✅ Traemos i18n para detectar el idioma
   const router = useRouter();
   const params = useLocalSearchParams();
-  // Default to 'breakfast' if not provided
-  const rawMealType = (params.mealType as string) || 'breakfast';
   
-  // Translate the meal type for display (using keys from home.mealTypes)
-  // e.g., t('home.mealTypes.breakfast') -> "Desayuno"
+  const rawMealType = (params.mealType as string) || 'breakfast';
   const displayMealType = t(`home.mealTypes.${rawMealType}`, { defaultValue: rawMealType });
 
   const { addMeal, loading } = useMealsStore();
@@ -34,7 +31,10 @@ export default function AddFoodScreen() {
   const [fats, setFats] = useState('');
   const [quantity, setQuantity] = useState('100'); 
 
-  // --- LÓGICA DE BÚSQUEDA ---
+  // ✅ Variable auxiliar para saber si estamos en inglés
+  const isEnglish = i18n.language.startsWith('en');
+
+  // --- LÓGICA DE BÚSQUEDA INTELIGENTE ---
   useEffect(() => {
     const searchFoods = async () => {
       if (searchQuery.length < 2) {
@@ -43,11 +43,15 @@ export default function AddFoodScreen() {
       }
 
       setIsSearching(true);
+
+      // ✅ 1. Decidimos en qué columna buscar según el idioma
+      const searchColumn = isEnglish ? 'name_en' : 'name';
+
       const { data, error } = await supabase
         .from('foods')
         .select('*')
-        .ilike('name', `%${searchQuery}%`)
-        .limit(5);
+        .ilike(searchColumn, `%${searchQuery}%`) // ✅ Buscamos en la columna correcta
+        .limit(10); // Aumenté el límite a 10 para ver más opciones
 
       if (!error && data) {
         setSearchResults(data);
@@ -60,12 +64,16 @@ export default function AddFoodScreen() {
     }, 500);
 
     return () => clearTimeout(delayDebounce);
-  }, [searchQuery]);
+  }, [searchQuery, isEnglish]); // Se ejecuta si cambia el texto o el idioma
 
   // --- SELECCIONAR ALIMENTO ---
   const handleSelectFood = (food: any) => {
     setFoodId(food.id);
-    setFoodName(food.name);
+    
+    // ✅ 2. Al seleccionar, usamos el nombre en el idioma actual
+    // Si estamos en inglés y existe name_en, úsalo. Si no, usa el normal.
+    const selectedName = isEnglish && food.name_en ? food.name_en : food.name;
+    setFoodName(selectedName);
     
     // Calorías
     const cal = food.calories || food.calories_per_100g || '';
@@ -82,7 +90,6 @@ export default function AddFoodScreen() {
     setFats(fat ? fat.toString() : '');
     
     setQuantity('100'); 
-    
     setSearchResults([]);
     setSearchQuery(''); 
   };
@@ -99,7 +106,7 @@ export default function AddFoodScreen() {
       await addMeal({
         user_id: user.id,
         food_id: foodId,
-        meal_type: rawMealType, // Save the raw key (breakfast) to DB, not the translated one
+        meal_type: rawMealType,
         name: foodName,
         calories: Number(calories),
         protein: Number(protein) || 0,
@@ -125,7 +132,6 @@ export default function AddFoodScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        {/* ✅ Title with dynamic translated meal type */}
         <Text style={styles.title}>
            {t('addFood.title', { mealType: displayMealType })}
         </Text>
@@ -156,7 +162,10 @@ export default function AddFoodScreen() {
                 onPress={() => handleSelectFood(item)}
               >
                 <View>
-                  <Text style={styles.resultName}>{item.name}</Text>
+                  {/* ✅ 3. Visualización en la lista: Mostramos el nombre según idioma */}
+                  <Text style={styles.resultName}>
+                    {isEnglish && item.name_en ? item.name_en : item.name}
+                  </Text>
                   <Text style={styles.resultBrand}>{item.brand || t('addFood.genericBrand')}</Text>
                 </View>
                 <Ionicons name="add-circle-outline" size={24} color="#4F46E5" />
