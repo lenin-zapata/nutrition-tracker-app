@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nutrition Tracker",
     "slug": "nutrition-tracker-app",
-    "version": "4.0.0",
+    "version": "5.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -29,12 +29,13 @@
         "ACCESS_NETWORK_STATE",
         "com.google.android.gms.permission.AD_ID"
       ],
-      "versionCode": 4
+      "versionCode": 5
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./withAdId.js",
       "expo-router",
       "expo-web-browser",
       [
