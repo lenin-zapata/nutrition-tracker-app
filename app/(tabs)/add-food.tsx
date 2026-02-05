@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMealsStore } from '@/store/mealsStore';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/services/supabase';
+import { useTranslation } from 'react-i18next'; // ✅ Import i18n
 
 export default function AddFoodScreen() {
+  const { t } = useTranslation(); // ✅ Hook de traducción
   const router = useRouter();
   const params = useLocalSearchParams();
-  const mealType = params.mealType as string || 'breakfast';
+  // Default to 'breakfast' if not provided
+  const rawMealType = (params.mealType as string) || 'breakfast';
   
+  // Translate the meal type for display (using keys from home.mealTypes)
+  // e.g., t('home.mealTypes.breakfast') -> "Desayuno"
+  const displayMealType = t(`home.mealTypes.${rawMealType}`, { defaultValue: rawMealType });
+
   const { addMeal, loading } = useMealsStore();
   const { user } = useAuthStore();
 
@@ -38,7 +45,7 @@ export default function AddFoodScreen() {
       setIsSearching(true);
       const { data, error } = await supabase
         .from('foods')
-        .select('*') // Traemos TODO para encontrar las columnas correctas
+        .select('*')
         .ilike('name', `%${searchQuery}%`)
         .limit(5);
 
@@ -55,44 +62,34 @@ export default function AddFoodScreen() {
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
 
-  // --- SELECCIONAR ALIMENTO (CORREGIDO) ---
+  // --- SELECCIONAR ALIMENTO ---
   const handleSelectFood = (food: any) => {
-    console.log("Alimento seleccionado:", food); // Para depurar si falta algo
-
     setFoodId(food.id);
     setFoodName(food.name);
     
-    // BUSCAMOS LOS VALORES CON DIFERENTES NOMBRES POSIBLES
-    // Prioridad: nombre exacto > nombre con _per_100g > nombre en singular
-    
     // Calorías
     const cal = food.calories || food.calories_per_100g || '';
-    
     // Proteínas
     const prot = food.protein || food.protein_per_100g || food.proteins || food.proteins_per_100g || '';
-    
     // Carbohidratos
     const carb = food.carbs || food.carbs_per_100g || food.carbohydrates || food.carbohydrates_per_100g || '';
-    
     // Grasas
     const fat = food.fats || food.fats_per_100g || food.fat || food.fat_per_100g || '';
 
-    // Asignamos los valores encontrados
     setCalories(cal ? cal.toString() : '');
     setProtein(prot ? prot.toString() : '');
     setCarbs(carb ? carb.toString() : '');
     setFats(fat ? fat.toString() : '');
     
-    setQuantity('100'); // Asumimos que la info base es por 100g
+    setQuantity('100'); 
     
-    // Limpiamos
     setSearchResults([]);
     setSearchQuery(''); 
   };
 
   const handleAddFood = async () => {
     if (!foodName || !calories) {
-      Alert.alert('Faltan datos', 'Por favor ingresa al menos el nombre y las calorías');
+      Alert.alert(t('addFood.alerts.missingDataTitle'), t('addFood.alerts.missingDataMsg'));
       return;
     }
 
@@ -102,7 +99,7 @@ export default function AddFoodScreen() {
       await addMeal({
         user_id: user.id,
         food_id: foodId,
-        meal_type: mealType,
+        meal_type: rawMealType, // Save the raw key (breakfast) to DB, not the translated one
         name: foodName,
         calories: Number(calories),
         protein: Number(protein) || 0,
@@ -111,23 +108,27 @@ export default function AddFoodScreen() {
         quantity_grams: Number(quantity) || 100,
       });
 
-      Alert.alert('¡Éxito!', 'Comida agregada correctamente', [
+      Alert.alert(t('addFood.alerts.successTitle'), t('addFood.alerts.successMsg'), [
         { text: 'OK', onPress: () => router.back() }
       ]);
       
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Hubo un problema al guardar la comida.');
+      Alert.alert(t('addFood.alerts.errorTitle'), t('addFood.alerts.errorMsg'));
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.title}>Agregar a {mealType}</Text>
+        {/* ✅ Title with dynamic translated meal type */}
+        <Text style={styles.title}>
+           {t('addFood.title', { mealType: displayMealType })}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -138,7 +139,7 @@ export default function AddFoodScreen() {
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar alimento (ej. Manzana)..."
+            placeholder={t('addFood.searchPlaceholder')}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -156,7 +157,7 @@ export default function AddFoodScreen() {
               >
                 <View>
                   <Text style={styles.resultName}>{item.name}</Text>
-                  <Text style={styles.resultBrand}>{item.brand || 'Genérico'}</Text>
+                  <Text style={styles.resultBrand}>{item.brand || t('addFood.genericBrand')}</Text>
                 </View>
                 <Ionicons name="add-circle-outline" size={24} color="#4F46E5" />
               </TouchableOpacity>
@@ -164,14 +165,17 @@ export default function AddFoodScreen() {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Datos del Alimento (por {quantity}g):</Text>
+        {/* FORMULARIO */}
+        <Text style={styles.sectionTitle}>
+          {t('addFood.sectionTitle', { quantity: quantity })}
+        </Text>
 
         <View style={styles.formCard}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre</Text>
+            <Text style={styles.label}>{t('addFood.nameLabel')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ej. Pechuga de Pollo"
+              placeholder={t('addFood.namePlaceholder')}
               value={foodName}
               onChangeText={setFoodName}
             />
@@ -179,7 +183,7 @@ export default function AddFoodScreen() {
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.label}>Calorías</Text>
+              <Text style={styles.label}>{t('addFood.caloriesLabel')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="kcal"
@@ -189,7 +193,7 @@ export default function AddFoodScreen() {
               />
             </View>
             <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-              <Text style={styles.label}>Cantidad (g)</Text>
+              <Text style={styles.label}>{t('addFood.quantityLabel')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="100g"
@@ -200,10 +204,10 @@ export default function AddFoodScreen() {
             </View>
           </View>
 
-          <Text style={styles.macrosTitle}>Macronutrientes</Text>
+          <Text style={styles.macrosTitle}>{t('addFood.macrosTitle')}</Text>
           <View style={styles.row}>
             <View style={styles.macroInput}>
-              <Text style={styles.label}>Proteína</Text>
+              <Text style={styles.label}>{t('addFood.proteinLabel')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0g"
@@ -213,7 +217,7 @@ export default function AddFoodScreen() {
               />
             </View>
             <View style={styles.macroInput}>
-              <Text style={styles.label}>Carbos</Text>
+              <Text style={styles.label}>{t('addFood.carbsLabel')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0g"
@@ -223,7 +227,7 @@ export default function AddFoodScreen() {
               />
             </View>
             <View style={styles.macroInput}>
-              <Text style={styles.label}>Grasas</Text>
+              <Text style={styles.label}>{t('addFood.fatsLabel')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="0g"
@@ -236,6 +240,7 @@ export default function AddFoodScreen() {
         </View>
       </ScrollView>
 
+      {/* FOOTER */}
       <View style={styles.footer}>
         <TouchableOpacity 
           style={styles.saveButton} 
@@ -247,7 +252,7 @@ export default function AddFoodScreen() {
           ) : (
             <>
               <Ionicons name="checkmark" size={24} color="#FFF" />
-              <Text style={styles.saveButtonText}>Guardar Comida</Text>
+              <Text style={styles.saveButtonText}>{t('addFood.saveButton')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -290,7 +295,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     maxHeight: 200, 
-    zIndex: 10, // Asegura que se vea sobre otros elementos
+    zIndex: 10,
   },
   resultItem: {
     flexDirection: 'row',

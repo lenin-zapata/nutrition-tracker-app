@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next'; // ✅ Importar i18n
 
 const TAB_BAR_CONFIG = {
   activeTintColor: '#4F46E5',
@@ -8,25 +9,28 @@ const TAB_BAR_CONFIG = {
   borderTopColor: '#E5E7EB',
 };
 
-const TABS = [
-  {
-    name: 'home',
-    title: 'Inicio',
-    icon: 'home',
-  },
-  {
-    name: 'add-food',
-    title: 'Agregar',
-    icon: 'add-circle',
-  },
-  {
-    name: 'profile',
-    title: 'Perfil',
-    icon: 'person',
-  },
-] as const;
-
 export default function TabsLayout() {
+  const { t } = useTranslation(); // ✅ Hook de traducción
+
+  // Definimos las tabs DENTRO del componente para usar t()
+  const tabs = [
+    {
+      name: 'home',
+      title: t('tabs.home'), // "Inicio" o "Home"
+      icon: 'home',
+    },
+    {
+      name: 'add-food',
+      title: t('tabs.add'), // "Agregar" o "Add"
+      icon: 'add-circle',
+    },
+    {
+      name: 'profile',
+      title: t('tabs.profile'), // "Perfil" o "Profile"
+      icon: 'person',
+    },
+  ] as const;
+
   return (
     <Tabs
       screenOptions={{
@@ -39,12 +43,12 @@ export default function TabsLayout() {
         },
       }}
     >
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <Tabs.Screen
           key={tab.name}
           name={tab.name}
           options={{
-            title: tab.title,
+            title: tab.title, // Título traducido
             tabBarIcon: ({ color, size }) => (
               <Ionicons name={tab.icon as any} size={size} color={color} />
             ),

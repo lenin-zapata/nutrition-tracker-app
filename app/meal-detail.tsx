@@ -3,33 +3,42 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useMealsStore } from '@/store/mealsStore';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next'; // ✅ Importar i18n
 
-const MEAL_TYPES: Record<string, { label: string; icon: string }> = {
-  breakfast: { label: 'Desayuno', icon: 'sunny' },
-  lunch: { label: 'Almuerzo', icon: 'restaurant' },
-  dinner: { label: 'Cena', icon: 'moon' },
-  snack: { label: 'Snack', icon: 'cafe' },
+// ✅ Solo iconos, las etiquetas vienen de la traducción
+const MEAL_ICONS: Record<string, string> = {
+  breakfast: 'sunny',
+  lunch: 'restaurant',
+  dinner: 'moon',
+  snack: 'cafe',
 };
 
 export default function MealDetailScreen() {
+  const { t } = useTranslation(); // ✅ Hook de traducción
   const router = useRouter();
   const { mealType } = useLocalSearchParams<{ mealType: string }>();
   
   const meals = useMealsStore((state) => state.meals);
   const deleteMeal = useMealsStore((state) => state.deleteMeal); 
   
+  // Si mealType no existe, usamos 'snack' por defecto
+  const typeKey = mealType || 'snack';
+  
+  // Traducción dinámica del título (Desayuno, Almuerzo...)
+  const typeLabel = t(`home.mealTypes.${typeKey}`, { defaultValue: typeKey });
+  const typeIcon = MEAL_ICONS[typeKey] || 'cafe';
+
   const filteredMeals = meals.filter((meal) => meal.meal_type === mealType);
   const totalCalories = filteredMeals.reduce((sum, meal) => sum + meal.calories, 0);
-  const currentType = MEAL_TYPES[mealType || 'snack'];
 
   const handleDelete = (id: string) => {
     Alert.alert(
-      "Eliminar alimento",
-      "¿Estás seguro?",
+      t('mealDetail.deleteTitle'),
+      t('mealDetail.deleteMessage'),
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: t('mealDetail.cancel'), style: "cancel" },
         { 
-          text: "Eliminar", 
+          text: t('mealDetail.deleteConfirm'), 
           style: "destructive",
           onPress: async () => {
              if (deleteMeal) await deleteMeal(id);
@@ -49,17 +58,19 @@ export default function MealDetailScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#111827" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{currentType.label}</Text>
+          <Text style={styles.headerTitle}>{typeLabel}</Text>
           <View style={{ width: 40 }} /> 
         </View>
 
         {/* Resumen */}
         <View style={styles.summaryCard}>
           <View style={styles.iconContainer}>
-            <Ionicons name={currentType.icon as any} size={32} color="#4F46E5" />
+            <Ionicons name={typeIcon as any} size={32} color="#4F46E5" />
           </View>
           <View>
-            <Text style={styles.totalLabel}>Total {currentType.label}</Text>
+            <Text style={styles.totalLabel}>
+               {t('mealDetail.totalLabel', { label: typeLabel })}
+            </Text>
             <Text style={styles.totalValue}>{Math.round(totalCalories)} kcal</Text>
           </View>
         </View>
@@ -71,23 +82,21 @@ export default function MealDetailScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No hay alimentos registrados.</Text>
+              <Text style={styles.emptyText}>{t('mealDetail.emptyList')}</Text>
             </View>
           }
           renderItem={({ item }) => (
             <View style={styles.mealCard}>
               <View style={styles.mealInfo}>
-                {/* --- CORRECCIÓN CLAVE AQUÍ --- */}
-                {/* Intentamos leer item.foods.name (unión de tablas) o item.name (directo) */}
                 <Text style={styles.mealName}>
-                  {item.foods?.name || item.name || 'Alimento sin nombre'}
+                  {item.foods?.name || item.name || t('mealDetail.noName')}
                 </Text>
 
                 <View style={styles.macrosContainer}>
                   <Text style={styles.macroText}>
-                    {item.protein ? `P: ${item.protein}g` : 'P: 0g'} • 
-                    {item.carbs ? ` C: ${item.carbs}g` : ' C: 0g'} • 
-                    {item.fats ? ` G: ${item.fats}g` : ' G: 0g'}
+                    P: {item.protein || 0}g • 
+                    C: {item.carbs || 0}g • 
+                    G: {item.fats || 0}g
                   </Text>
                 </View>
               </View>
@@ -109,7 +118,7 @@ export default function MealDetailScreen() {
             onPress={() => router.push(`/(tabs)/add-food?mealType=${mealType}`)}
           >
             <Ionicons name="add" size={24} color="#FFF" />
-            <Text style={styles.addButtonText}>Agregar Alimento</Text>
+            <Text style={styles.addButtonText}>{t('mealDetail.addButton')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -132,7 +141,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   backButton: { padding: 8, borderRadius: 8, backgroundColor: '#F3F4F6' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827', textTransform: 'capitalize' },
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',

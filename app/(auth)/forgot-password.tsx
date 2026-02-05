@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityInd
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
+import { useTranslation } from 'react-i18next'; // ✅ Import i18n
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation(); // ✅ Hook de traducción
   const router = useRouter();
   const { resetPassword } = useAuthStore();
   
@@ -13,21 +15,24 @@ export default function ForgotPasswordScreen() {
 
   const handleReset = async () => {
     if (!email) {
-      Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
+      Alert.alert(t('common.error'), t('forgotPassword.alerts.missingEmail'));
       return;
     }
 
     setLoading(true);
     try {
-      await resetPassword(email);
+      // Note: resetPassword usually returns { error }
+      const { error } = await resetPassword(email);
+      
+      if (error) throw error;
       
       Alert.alert(
-        'Correo enviado', 
-        'Revisa tu bandeja de entrada. Hemos enviado un enlace para restablecer tu contraseña.',
-        [{ text: 'Volver al Login', onPress: () => router.back() }]
+        t('forgotPassword.alerts.successTitle'), 
+        t('forgotPassword.alerts.successMsg'),
+        [{ text: t('forgotPassword.alerts.backToLogin'), onPress: () => router.back() }]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo enviar el correo');
+      Alert.alert(t('common.error'), error.message || t('forgotPassword.alerts.errorMsg'));
     } finally {
       setLoading(false);
     }
@@ -45,18 +50,18 @@ export default function ForgotPasswordScreen() {
           <Ionicons name="lock-open-outline" size={48} color="#4F46E5" />
         </View>
 
-        <Text style={styles.title}>Recuperar Contraseña</Text>
+        <Text style={styles.title}>{t('forgotPassword.title')}</Text>
         <Text style={styles.subtitle}>
-          Ingresa tu correo y te enviaremos las instrucciones para restablecerla.
+          {t('forgotPassword.subtitle')}
         </Text>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Correo Electrónico</Text>
+          <Text style={styles.label}>{t('forgotPassword.emailLabel')}</Text>
           <View style={styles.inputWrapper}>
             <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="ejemplo@correo.com"
+              placeholder={t('forgotPassword.emailPlaceholder')}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -73,7 +78,7 @@ export default function ForgotPasswordScreen() {
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.resetButtonText}>Enviar Instrucciones</Text>
+            <Text style={styles.resetButtonText}>{t('forgotPassword.sendButton')}</Text>
           )}
         </TouchableOpacity>
       </View>

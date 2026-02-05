@@ -3,123 +3,98 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Linking from 'expo-linking';
+import { useTranslation } from 'react-i18next';
 
 import { useAuthStore } from '@/store/authStore';
+import { useUserProfileStore } from '@/store/userProfileStore'; // ✅ IMPORTANTE
 import { AdBanner } from '@/components/AdBanner';
 import { supabase } from '@/services/supabase';
+import '@/lang/i18n'; 
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  stackContainer: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  stackContainer: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
 });
 
-// Función auxiliar para leer parámetros de la URL
 function getParamsFromUrl(url: string) {
   const params: { [key: string]: string } = {};
   const parts = url.split('#');
   const hash = parts.length > 1 ? parts[1] : url.split('?')[1];
-  
   if (!hash) return params;
-  
   hash.split('&').forEach((param) => {
     const [key, value] = param.split('=');
     if (key && value) params[key] = decodeURIComponent(value);
   });
-  
   return params;
 }
 
 export default function RootLayout() {
   const { session, initialize } = useAuthStore();
-  
-  // "Engañamos" a TS para que trate segments como array de strings simple
+  const { fetchProfile, profile } = useUserProfileStore(); // ✅ Traemos el store del perfil
   const segments = useSegments() as string[];
-  
   const router = useRouter();
   
-  // SEMÁFORO: Si esto es true, nadie te mueve de la pantalla de cambio de contraseña
   const [isRecoveryFlow, setIsRecoveryFlow] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
-  // 1. Inicialización con Timeout (SEGURO DE VIDA)
-  // Esto evita que te quedes en el spinner infinito
+  // 1. Inicialización Robusta
   useEffect(() => {
     let mounted = true;
 
     const startApp = async () => {
       try {
+        // A. Inicializar Auth
         await initialize();
+        
+        // B. Si hay sesión, intentamos cargar el perfil INMEDIATAMENTE
+        // Esto evita que la app se quede "pensando" en el limbo
+        const currentSession = useAuthStore.getState().session;
+        if (currentSession?.user) {
+          await fetchProfile(currentSession.user.id);
+        }
       } catch (e) {
         console.error("Error inicializando:", e);
       }
+      
       if (mounted) setIsReady(true);
     };
 
     startApp();
 
-    // Si en 3 segundos la app no ha reaccionado, forzamos la carga
+    // Seguro de vida: forzar carga en 3 segundos si algo falla
     const timer = setTimeout(() => {
-      if (mounted && !isReady) {
-        console.log("⏱️ Tiempo de espera agotado, forzando arranque...");
-        setIsReady(true);
-      }
+      if (mounted && !isReady) setIsReady(true);
     }, 3000);
 
-    return () => { 
-      mounted = false; 
-      clearTimeout(timer);
-    };
+    return () => { mounted = false; clearTimeout(timer); };
   }, []); 
 
-  // 2. Lógica de Deep Links (Detectar si vienes del correo)
+  // 2. Deep Links (Recuperación contraseña)
   useEffect(() => {
     const handleDeepLink = async (url: string) => {
       const params = getParamsFromUrl(url);
-      
-      // Si detectamos "type=recovery" o tokens en la URL
       if (params.type === 'recovery' || (params.access_token && params.refresh_token)) {
-        console.log("🔗 Link de recuperación detectado");
-        setIsRecoveryFlow(true); // Bloqueamos al "portero"
-        
-        // Forzamos la sesión manualmente
+        setIsRecoveryFlow(true);
         if (params.access_token && params.refresh_token) {
           await supabase.auth.setSession({
             access_token: params.access_token,
             refresh_token: params.refresh_token,
           });
         }
-        // Redirigimos INMEDIATAMENTE
         router.replace('/(auth)/reset-password-change');
       }
     };
 
-    // Chequear URL al abrir la app en frío
-    Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink(url);
-    });
-
-    // Chequear URL si la app ya estaba abierta
+    Linking.getInitialURL().then((url) => { if (url) handleDeepLink(url); });
     const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
-    
     return () => sub.remove();
   }, []);
 
-  // 3. Detectar Evento Interno de Supabase (Red de seguridad)
+  // 3. Listener Supabase
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        console.log("🔑 Evento PASSWORD_RECOVERY interno detectado");
         setIsRecoveryFlow(true);
         router.replace('/(auth)/reset-password-change');
       }
@@ -127,25 +102,41 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 4. Protección de Rutas (El Portero)
+  // 4. EL PORTERO (Lógica de Protección Actualizada)
   useEffect(() => {
     if (!isReady) return; 
     if (isRecoveryFlow) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
-    const inRoot = segments.length === 0; // <--- NUEVO: Detectar si estamos en la raíz (/)
+    const inRoot = segments.length === 0; // Estamos en la raíz '/'
     const isResetPage = segments.length > 1 && segments[1] === 'reset-password-change';
 
-    // Si hay sesión y estamos en Login, Onboarding O EN LA RAÍZ -> Al Home
-    if (session && !isResetPage && (inAuthGroup || inOnboarding || inRoot)) {
-      router.replace('/(tabs)/home');
+    // CASO 1: Usuario Logueado
+    if (session && !isResetPage) {
+      
+      // A. Si no tiene perfil -> MANDAR A ONBOARDING
+      // (Excepto si ya está ahí)
+      if (!profile && !inOnboarding) {
+        router.replace('/onboarding');
+        return;
+      }
+
+      // B. Si tiene perfil Y está intentando entrar a Login o Raíz -> MANDAR A HOME
+      if (profile && (inAuthGroup || inRoot)) {
+        router.replace('/(tabs)/home');
+        return;
+      }
+      
+      // Nota: Si tiene perfil y está en onboarding (editando), lo dejamos estar ahí.
     } 
-    // Si no hay sesión y NO estamos en Login/Onboarding -> Al Login
+    
+    // CASO 2: Usuario NO Logueado
     else if (!session && !inAuthGroup && !inOnboarding) {
       router.replace('/(auth)/login');
     }
-  }, [session, isReady, segments, isRecoveryFlow]);
+
+  }, [session, profile, isReady, segments, isRecoveryFlow]);
 
   if (!isReady) {
     return (

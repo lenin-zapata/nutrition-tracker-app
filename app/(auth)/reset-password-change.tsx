@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons'; // ✅ Iconos
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
+import { useTranslation } from 'react-i18next'; // ✅ Importar i18n
 
 export default function ResetPasswordChangeScreen() {
+  const { t } = useTranslation(); // ✅ Hook de traducción
   const router = useRouter();
   const { updatePassword } = useAuthStore();
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // ✅ Estados independientes para cada campo
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -19,17 +20,17 @@ export default function ResetPasswordChangeScreen() {
 
   const handleUpdate = async () => {
     if (!password || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert(t('common.error'), t('resetPassword.alerts.fillAll'));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(t('common.error'), t('resetPassword.alerts.mismatch'));
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      Alert.alert(t('common.error'), t('resetPassword.alerts.minLength'));
       return;
     }
 
@@ -38,14 +39,18 @@ export default function ResetPasswordChangeScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
-      Alert.alert('¡Éxito!', 'Tu contraseña ha sido actualizada.', [
-        { 
-          text: 'Ir al Inicio', 
-          onPress: () => router.replace('/(tabs)/home') 
-        }
-      ]);
+      Alert.alert(
+        t('resetPassword.alerts.successTitle'), 
+        t('resetPassword.alerts.successMsg'), 
+        [
+          { 
+            text: t('resetPassword.alerts.goHome'), 
+            onPress: () => router.replace('/(tabs)/home') 
+          }
+        ]
+      );
     }
   };
 
@@ -53,16 +58,16 @@ export default function ResetPasswordChangeScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ 
          headerShown: true, 
-         title: 'Cambiar Contraseña',
+         title: t('resetPassword.screenTitle'), // Título del Header
          headerBackVisible: false 
       }} />
 
-      <Text style={styles.title}>Nueva Contraseña</Text>
-      <Text style={styles.subtitle}>Ingresa tu nueva contraseña para recuperar el acceso.</Text>
+      <Text style={styles.title}>{t('resetPassword.title')}</Text>
+      <Text style={styles.subtitle}>{t('resetPassword.subtitle')}</Text>
 
       {/* CAMPO 1: Nueva Contraseña */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Nueva Contraseña</Text>
+        <Text style={styles.label}>{t('resetPassword.newPasswordLabel')}</Text>
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.inputPassword}
@@ -79,7 +84,7 @@ export default function ResetPasswordChangeScreen() {
 
       {/* CAMPO 2: Confirmar Contraseña */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Confirmar Contraseña</Text>
+        <Text style={styles.label}>{t('resetPassword.confirmPasswordLabel')}</Text>
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.inputPassword}
@@ -102,7 +107,7 @@ export default function ResetPasswordChangeScreen() {
         {loading ? (
           <ActivityIndicator color="#FFF" />
         ) : (
-          <Text style={styles.buttonText}>Actualizar Contraseña</Text>
+          <Text style={styles.buttonText}>{t('resetPassword.updateButton')}</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -116,7 +121,6 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 8 },
   
-  // ✅ ESTILOS PARA EL INPUT CON OJO (reutilizados)
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -131,7 +135,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
   },
-  // ------------------------------------
 
   button: { backgroundColor: '#4F46E5', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   buttonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },

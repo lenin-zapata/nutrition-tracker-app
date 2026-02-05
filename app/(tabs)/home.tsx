@@ -8,21 +8,22 @@ import { useMealsStore } from '@/store/mealsStore';
 import CircularProgress from '@/components/CircularProgress';
 import MacroProgressBar from '@/components/MacroProgressBar';
 
+// ✅ Importar i18n
+import { useTranslation } from 'react-i18next';
+
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
-interface MealTypeConfig {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-const MEAL_TYPES: Record<MealType, MealTypeConfig> = {
-  breakfast: { label: 'Desayuno', icon: 'sunny' },
-  lunch: { label: 'Almuerzo', icon: 'restaurant' },
-  dinner: { label: 'Cena', icon: 'moon' },
-  snack: { label: 'Snack', icon: 'cafe' },
+// ✅ Solo guardamos el icono aquí, la etiqueta (label) la traduciremos al vuelo
+const MEAL_ICONS: Record<MealType, keyof typeof Ionicons.glyphMap> = {
+  breakfast: 'sunny',
+  lunch: 'restaurant',
+  dinner: 'moon',
+  snack: 'cafe',
 };
 
 export default function HomeScreen() {
+  const { t, i18n } = useTranslation(); // ✅ Hook t y objeto i18n (para el idioma actual)
+  
   const { user } = useAuthStore();
   const { profile, fetchProfile } = useUserProfileStore();
   const { meals, dailyTotals, fetchMeals } = useMealsStore();
@@ -74,7 +75,7 @@ export default function HomeScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Verificando perfil...</Text>
+        <Text style={styles.loadingText}>{t('home.verifying')}</Text>
       </View>
     );
   }
@@ -86,9 +87,10 @@ export default function HomeScreen() {
     >
       <View style={styles.contentContainer}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Hoy</Text>
+          <Text style={styles.headerTitle}>{t('home.title')}</Text>
           <Text style={styles.headerDate}>
-            {new Date().toLocaleDateString('es-ES', {
+            {/* ✅ Fecha formateada según el idioma actual */}
+            {new Date().toLocaleDateString(i18n.language, {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
@@ -98,7 +100,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.caloriesCard}>
-          <Text style={styles.cardLabel}>Calorías</Text>
+          <Text style={styles.cardLabel}>{t('home.calories')}</Text>
           <CircularProgress
             size={150}
             strokeWidth={12}
@@ -110,27 +112,28 @@ export default function HomeScreen() {
               {Math.round(dailyTotals.calories)}
             </Text>
             <Text style={styles.caloriesGoal}>
-              de {Math.round(calorieGoal)} kcal
+              {/* ✅ Traducción con interpolación de variable */}
+              {t('home.ofTarget', { target: Math.round(calorieGoal) })}
             </Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Macronutrientes</Text>
+          <Text style={styles.sectionTitle}>{t('home.macros')}</Text>
           <MacroProgressBar
-            label="Proteínas"
+            label={t('home.proteins')}
             current={dailyTotals.protein}
             goal={profile.daily_protein_goal || 150}
             color="#10B981"
           />
           <MacroProgressBar
-            label="Carbohidratos"
+            label={t('home.carbs')}
             current={dailyTotals.carbs}
             goal={profile.daily_carbs_goal || 200}
             color="#3B82F6"
           />
           <MacroProgressBar
-            label="Grasas"
+            label={t('home.fats')}
             current={dailyTotals.fats}
             goal={profile.daily_fats_goal || 65}
             color="#F59E0B"
@@ -139,19 +142,20 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Comidas</Text>
+            <Text style={styles.sectionTitle}>{t('home.mealsTitle')}</Text>
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/add-food')}
               style={styles.addButton}
             >
-              <Text style={styles.addButtonText}>Agregar</Text>
+              <Text style={styles.addButtonText}>{t('home.add')}</Text>
             </TouchableOpacity>
           </View>
 
-          {Object.entries(MEAL_TYPES).map(([type, { label, icon }]) => {
-            const mealType = type as MealType;
-            const typeMeals = getMealsByType(mealType);
-            const totalCalories = getTotalCaloriesByType(mealType);
+          {/* Iteramos sobre las claves de los iconos */}
+          {(Object.keys(MEAL_ICONS) as MealType[]).map((type) => {
+            const icon = MEAL_ICONS[type];
+            const typeMeals = getMealsByType(type);
+            const totalCalories = getTotalCaloriesByType(type);
 
             return (
               <TouchableOpacity
@@ -163,9 +167,13 @@ export default function HomeScreen() {
                   <View style={styles.mealCardLeft}>
                     <Ionicons name={icon} size={24} color="#4F46E5" />
                     <View style={styles.mealCardTextContainer}>
-                      <Text style={styles.mealCardTitle}>{label}</Text>
+                      <Text style={styles.mealCardTitle}>
+                         {/* ✅ Traducción dinámica del tipo de comida */}
+                         {t(`home.mealTypes.${type}`)}
+                      </Text>
                       <Text style={styles.mealCardSubtitle}>
-                        {typeMeals.length} {typeMeals.length === 1 ? 'comida' : 'comidas'} •{' '}
+                        {/* ✅ Pluralización automática: "1 comida" o "2 comidas" */}
+                        {t('home.mealItems', { count: typeMeals.length })} •{' '}
                         {Math.round(totalCalories)} kcal
                       </Text>
                     </View>
