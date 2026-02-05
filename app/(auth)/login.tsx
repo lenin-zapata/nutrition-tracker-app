@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons'; // ✅ Importamos los iconos
 import { useAuthStore } from '@/store/authStore';
 
 const styles = StyleSheet.create({
@@ -30,7 +31,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputGroupLast: {
-    marginBottom: 24,
+    marginBottom: 12,
   },
   label: {
     fontSize: 14,
@@ -45,6 +46,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  // ✅ NUEVOS ESTILOS PARA EL CONTENEDOR DE PASSWORD
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+  },
+  inputPassword: {
+    flex: 1, // Toma todo el espacio disponible
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  eyeIcon: {
+    marginLeft: 8,
+  },
+  // ----------------------------------------------
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    color: '#4f46e5',
+    fontWeight: '600',
+    fontSize: 14,
   },
   loginButton: {
     backgroundColor: '#4f46e5',
@@ -75,8 +105,13 @@ const styles = StyleSheet.create({
 });
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // ✅ Estado para controlar la visibilidad (false = oculto por defecto)
+  const [showPassword, setShowPassword] = useState(false);
+  
   const { signIn, loading } = useAuthStore();
 
   const handleLogin = async () => {
@@ -89,7 +124,8 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert('Error', error.message || 'Error al iniciar sesión');
     } else {
-      router.replace('/');
+      // ✅ Redirección directa al Home para evitar pantalla blanca en raíz
+      router.replace('/(tabs)/home');
     }
   };
 
@@ -120,16 +156,39 @@ export default function LoginScreen() {
 
         <View style={styles.inputGroupLast}>
           <Text style={styles.label}>Contraseña</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            editable={!loading}
-          />
+          
+          {/* ✅ Contenedor especial con el icono */}
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.inputPassword}
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword} // Si showPassword es true, NO es seguro (se ve)
+              autoCapitalize="none"
+              editable={!loading}
+            />
+            <TouchableOpacity 
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons 
+                name={showPassword ? 'eye-off' : 'eye'} 
+                size={24} 
+                color="#6b7280" 
+              />
+            </TouchableOpacity>
+          </View>
+
         </View>
+
+        <TouchableOpacity 
+          style={styles.forgotPasswordContainer}
+          onPress={() => router.push('/forgot-password')}
+          disabled={loading}
+        >
+          <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.loginButton, loading && styles.loginButtonDisabled]}

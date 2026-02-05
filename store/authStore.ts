@@ -13,6 +13,12 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
+  
+  // Función para SOLICITAR el correo (Paso 1)
+  resetPassword: (email: string) => Promise<{ error: any }>;
+  
+  // NUEVA FUNCIÓN: Para ACTUALIZAR la contraseña una vez dentro (Paso 3)
+  updatePassword: (password: string) => Promise<{ error: any }>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -41,6 +47,28 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true });
     await authService.signOut();
     set({ user: null, loading: false });
+  },
+
+  resetPassword: async (email: string) => {
+    set({ loading: true });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Si configuras Deep Linking en el futuro, aquí va: redirectTo
+    });
+    set({ loading: false });
+    return { error };
+  },
+
+  // IMPLEMENTACIÓN DE UPDATE PASSWORD
+  updatePassword: async (password: string) => {
+    set({ loading: true });
+    
+    // Esta función actualiza al usuario que tiene la sesión activa actualmente
+    const { data, error } = await supabase.auth.updateUser({
+      password: password
+    });
+
+    set({ loading: false });
+    return { error };
   },
 
   initialize: async () => {
