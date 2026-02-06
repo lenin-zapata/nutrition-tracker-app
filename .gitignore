@@ -21,3 +21,6 @@ google-service-account.json
 .vscode/
 .idea/
 
+
+android/
+ios/
