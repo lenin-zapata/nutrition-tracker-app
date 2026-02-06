@@ -170,5 +170,30 @@ export default {
     "p": "P",
     "c": "C",
     "f": "F"  
+  },
+  "register": {
+    "title": "Create Account",
+    "subtitle": "Sign up to get started",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@email.com",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm Password",
+    "submit": "Sign Up",
+    "loading": "Creating account...",
+    "haveAccount": "Already have an account? ",
+    "loginLink": "Log In",
+    "errors": {
+      "title": "Error",
+      "missingFields": "Please fill in all fields",
+      "passwordMismatch": "Passwords do not match",
+      "passwordLength": "Password must be at least 6 characters",
+      "generic": "Registration error"
+    },
+    "success": {
+      "title": "Success",
+      "verifyEmail": "Account created. Please verify your email and then log in.",
+      "onboarding": "Account created. Redirecting to onboarding...",
+      "ok": "OK"
+    }
   }
 };

@@ -171,5 +171,30 @@ export default {
     "p": "P",
     "c": "C",
     "f": "G"
+  },
+  "register": {
+    "title": "Crear Cuenta",
+    "subtitle": "Regístrate para comenzar",
+    "emailLabel": "Email",
+    "emailPlaceholder": "tu@email.com",
+    "passwordLabel": "Contraseña",
+    "confirmPasswordLabel": "Confirmar Contraseña",
+    "submit": "Registrarse",
+    "loading": "Creando cuenta...",
+    "haveAccount": "¿Ya tienes cuenta? ",
+    "loginLink": "Inicia Sesión",
+    "errors": {
+      "title": "Error",
+      "missingFields": "Por favor completa todos los campos",
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "passwordLength": "La contraseña debe tener al menos 6 caracteres",
+      "generic": "Error al registrar"
+    },
+    "success": {
+      "title": "Éxito",
+      "verifyEmail": "Cuenta creada. Por favor verifica tu correo y luego inicia sesión.",
+      "onboarding": "Cuenta creada. Redirigiendo al onboarding...",
+      "ok": "OK"
+    }
   }
 };
