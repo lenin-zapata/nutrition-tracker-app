@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next'; // ✅ Importar i18n
+import { useTranslation } from 'react-i18next';
+import { Platform } from 'react-native'; // ✅ 1. Importante para detectar Android
 
 const TAB_BAR_CONFIG = {
   activeTintColor: '#4F46E5',
@@ -10,23 +11,22 @@ const TAB_BAR_CONFIG = {
 };
 
 export default function TabsLayout() {
-  const { t } = useTranslation(); // ✅ Hook de traducción
+  const { t } = useTranslation();
 
-  // Definimos las tabs DENTRO del componente para usar t()
   const tabs = [
     {
       name: 'home',
-      title: t('tabs.home'), // "Inicio" o "Home"
+      title: t('tabs.home'),
       icon: 'home',
     },
     {
       name: 'add-food',
-      title: t('tabs.add'), // "Agregar" o "Add"
+      title: t('tabs.add'),
       icon: 'add-circle',
     },
     {
       name: 'profile',
-      title: t('tabs.profile'), // "Perfil" o "Profile"
+      title: t('tabs.profile'),
       icon: 'person',
     },
   ] as const;
@@ -37,10 +37,26 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: TAB_BAR_CONFIG.activeTintColor,
         tabBarInactiveTintColor: TAB_BAR_CONFIG.inactiveTintColor,
+        
+        // ✅ 2. Aquí está la corrección visual
         tabBarStyle: {
           borderTopWidth: TAB_BAR_CONFIG.borderTopWidth,
           borderTopColor: TAB_BAR_CONFIG.borderTopColor,
+          backgroundColor: '#FFFFFF', // Asegura fondo blanco
+          
+          // Altura: Android necesita menos (60), iOS necesita más por el Home Indicator (90)
+          height: Platform.OS === 'android' ? 65 : 90, 
+          
+          // Padding inferior: Android poco (10), iOS mucho (30)
+          paddingBottom: Platform.OS === 'android' ? 10 : 30,
+          paddingTop: 5,
         },
+        // Opcional: Ocultar el texto si quieres ganar más espacio, 
+        // pero con las medidas de arriba se verá bien con texto.
+        tabBarLabelStyle: {
+           fontSize: 12,
+           fontWeight: '500',
+        }
       }}
     >
       {tabs.map((tab) => (
@@ -48,9 +64,9 @@ export default function TabsLayout() {
           key={tab.name}
           name={tab.name}
           options={{
-            title: tab.title, // Título traducido
+            title: tab.title,
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name={tab.icon as any} size={size} color={color} />
+              <Ionicons name={tab.icon as any} size={24} color={color} />
             ),
           }}
         />
