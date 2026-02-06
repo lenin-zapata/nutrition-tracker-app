@@ -45,7 +45,7 @@ export default function TabsLayout() {
           backgroundColor: '#FFFFFF', // Asegura fondo blanco
           
           // Altura: Android necesita menos (60), iOS necesita más por el Home Indicator (90)
-          height: Platform.OS === 'android' ? 65 : 90, 
+          height: Platform.OS === 'android' ? 55 : 80, 
           
           // Padding inferior: Android poco (10), iOS mucho (30)
           paddingBottom: Platform.OS === 'android' ? 10 : 30,
