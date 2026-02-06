@@ -3,9 +3,8 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useMealsStore } from '@/store/mealsStore';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next'; // ✅ Importar i18n
+import { useTranslation } from 'react-i18next';
 
-// ✅ Solo iconos, las etiquetas vienen de la traducción
 const MEAL_ICONS: Record<string, string> = {
   breakfast: 'sunny',
   lunch: 'restaurant',
@@ -14,22 +13,35 @@ const MEAL_ICONS: Record<string, string> = {
 };
 
 export default function MealDetailScreen() {
-  const { t } = useTranslation(); // ✅ Hook de traducción
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const { mealType } = useLocalSearchParams<{ mealType: string }>();
   
   const meals = useMealsStore((state) => state.meals);
   const deleteMeal = useMealsStore((state) => state.deleteMeal); 
   
-  // Si mealType no existe, usamos 'snack' por defecto
   const typeKey = mealType || 'snack';
-  
-  // Traducción dinámica del título (Desayuno, Almuerzo...)
   const typeLabel = t(`home.mealTypes.${typeKey}`, { defaultValue: typeKey });
   const typeIcon = MEAL_ICONS[typeKey] || 'cafe';
 
   const filteredMeals = meals.filter((meal) => meal.meal_type === mealType);
   const totalCalories = filteredMeals.reduce((sum, meal) => sum + meal.calories, 0);
+
+  // ✅ FUNCIÓN CORREGIDA Y CON DEPURACIÓN
+  const getFoodName = (item: any) => {
+    const foodData = item.foods || item; 
+
+    // DEPURACIÓN: Mira esto en tu terminal
+    // console.log(`Comida: ${foodData.name}, Name_EN: ${foodData.name_en}, Idioma: ${i18n.language}`);
+
+    // 1. Si estamos en inglés y tenemos traducción
+    if (i18n.language.startsWith('en') && foodData.name_en) {
+      return foodData.name_en;
+    }
+
+    // 2. Fallback
+    return foodData.name || t('mealDetail.noName');
+  };
 
   const handleDelete = (id: string) => {
     Alert.alert(
@@ -88,15 +100,18 @@ export default function MealDetailScreen() {
           renderItem={({ item }) => (
             <View style={styles.mealCard}>
               <View style={styles.mealInfo}>
+                {/* Nombre de la comida */}
                 <Text style={styles.mealName}>
-                  {item.foods?.name || item.name || t('mealDetail.noName')}
+                  {getFoodName(item)}
                 </Text>
 
+                {/* Macros traducidos */}
                 <View style={styles.macrosContainer}>
                   <Text style={styles.macroText}>
-                    P: {item.protein || 0}g • 
-                    C: {item.carbs || 0}g • 
-                    G: {item.fats || 0}g
+                    {/* ✅ Usa t() para que cambie entre 'F' y 'G' automáticamente */}
+                    {t('macros.p', { defaultValue: 'P' })}: {item.protein || 0}g • 
+                    {t('macros.c', { defaultValue: 'C' })}: {item.carbs || 0}g • 
+                    {t('macros.f', { defaultValue: 'F' })}: {item.fats || 0}g
                   </Text>
                 </View>
               </View>
@@ -111,7 +126,6 @@ export default function MealDetailScreen() {
           )}
         />
 
-        {/* Botón Agregar */}
         <View style={styles.footer}>
           <TouchableOpacity 
             style={styles.addButton}

@@ -84,7 +84,7 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
     console.log("💾 [STORE] Guardando perfil...", profileData);
     
     const { error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .upsert(profileData);
 
     if (error) {

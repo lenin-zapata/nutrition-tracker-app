@@ -67,7 +67,7 @@ export const useMealsStore = create<MealsState>((set, get) => ({
         fats,
         created_at,
         meal_date,
-        foods ( name, brand )
+        foods ( name, brand, name_en )
       `)
       .eq('user_id', userId)
       .gte('created_at', startOfDay)

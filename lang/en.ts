@@ -166,4 +166,9 @@ export default {
     addButton: "Add Food",
     noName: "Unnamed Food",
   },
+  "macros": {
+    "p": "P",
+    "c": "C",
+    "f": "F"  
+  }
 };

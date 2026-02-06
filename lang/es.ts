@@ -167,4 +167,9 @@ export default {
     addButton: "Agregar Alimento",
     noName: "Alimento sin nombre",
   },
+  "macros": {
+    "p": "P",
+    "c": "C",
+    "f": "G"
+  }
 };
