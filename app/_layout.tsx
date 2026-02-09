@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native'; // ✅ Agregado Platform
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/store/authStore';
@@ -7,6 +7,9 @@ import { useUserProfileStore } from '@/store/userProfileStore';
 import { AdBanner } from '@/components/AdBanner';
 import { supabase } from '@/services/supabase';
 import '@/lang/i18n';
+
+// ✅ 1. Importar la librería de actualizaciones
+import SpInAppUpdates, { IAUUpdateKind } from 'sp-react-native-in-app-updates';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
@@ -20,11 +23,10 @@ export default function RootLayout() {
   const segments = useSegments() as string[];
   const router = useRouter();
   
-  // Usamos tus variables de estado
   const [isReady, setIsReady] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(false);
 
-  // 1. INICIALIZACIÓN DE LA APP (Tu código original, está perfecto)
+  // 1. INICIALIZACIÓN DE LA APP (Auth + Perfil)
   useEffect(() => {
     let mounted = true;
 
@@ -49,9 +51,38 @@ export default function RootLayout() {
     return () => { mounted = false; };
   }, []);
 
-  // 2. EL PORTERO (Lógica de Navegación) - ESTO ES LO QUE FALTABA
+  // ✅ 2. VERIFICACIÓN DE ACTUALIZACIONES (NUEVO)
   useEffect(() => {
-    // Si no estamos listos o estamos cargando perfil, no hacemos nada aún
+    // Solo ejecutamos esto en Android real
+    if (Platform.OS !== 'android') return;
+
+    const checkForUpdates = async () => {
+      const inAppUpdates = new SpInAppUpdates(
+        false // debug: false para producción
+      );
+
+      try {
+        // Verifica con la Play Store
+        const result = await inAppUpdates.checkNeedsUpdate();
+        
+        if (result.shouldUpdate) {
+          console.log("🚀 Actualización encontrada, forzando pantalla...");
+          // Lanza la pantalla de actualización OBLIGATORIA (IMMEDIATE)
+          await inAppUpdates.startUpdate({
+            updateType: IAUUpdateKind.FLEXIBLE, 
+          });
+        }
+      } catch (error) {
+        // Es normal que falle en desarrollo si la versión no coincide con la tienda
+        console.log("⚠️ Error verificando updates (ignorar en dev):", error);
+      }
+    };
+
+    checkForUpdates();
+  }, []);
+
+  // 3. EL PORTERO (Lógica de Navegación)
+  useEffect(() => {
     if (!isReady || isCheckingProfile) return;
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -59,7 +90,6 @@ export default function RootLayout() {
 
     // CASO A: NO LOGUEADO
     if (!session) {
-      // Si no tiene sesión y no está en login, mandar a Login
       if (!inAuthGroup) {
         router.replace('/(auth)/login');
       }
@@ -69,17 +99,13 @@ export default function RootLayout() {
     // CASO B: LOGUEADO
     if (session) {
       if (profile) {
-        // ✅ TIENE PERFIL (Usuario registrado)
-        
-        // ⚠️ LA CORRECCIÓN CLAVE:
-        // Solo lo mandamos al Home si está en Login o en la pantalla de carga (root).
-        // Si está en 'onboarding' (editando perfil), NO hacemos nada (lo dejamos ahí).
+        // ✅ TIENE PERFIL
+        // Solo redirigir a Home si está en Login o Splash, permitir Onboarding para editar
         if (inAuthGroup || segments.length === 0) {
           router.replace('/(tabs)/home');
         }
       } else {
-        // ❌ NO TIENE PERFIL (Usuario nuevo)
-        // Debe ir obligatoriamente a Onboarding
+        // ❌ NO TIENE PERFIL -> Obligatorio Onboarding
         if (!inOnboarding) {
           router.replace('/onboarding');
         }
